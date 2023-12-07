@@ -100,36 +100,208 @@
 //     println!("c == 123: {}", c == 123);
 // }
 
-use std::sync::atomic::AtomicUsize;
+// use std::sync::atomic::AtomicUsize;
+// use std::sync::atomic::Ordering::Relaxed;
+// use std::thread::{self, Scope};
+// use std::time::Duration;
+// fn main() {
+//     let num_done: &AtomicUsize = &AtomicUsize::new(0); // ref for 4thread
+//     thread::scope(|s: &Scope<'_, '_>| {
+//         for _ in 0..4 {
+//             s.spawn(move || {
+//                 let mut current_sum: usize = 0;
+//                 for _ in 0..25 {
+//                     current_sum += 1;
+//                     thread::sleep(Duration::from_millis(100));
+//                     num_done.fetch_add(1, Relaxed);
+//                 }
+//                 println!(
+//                     "thread: {:?}, result: {}",
+//                     thread::current().id(),
+//                     current_sum
+//                 );
+//             });
+//         }
+//         loop {
+//             let n: usize = num_done.load(Relaxed);
+//             if n == 100 {
+//                 break;
+//             }
+//             println!("Working.. {n}/100 done");
+//             thread::sleep(Duration::from_millis(100));
+//         }
+//     });
+//     println!("\nDone");
+// }
+
+// use std::sync::atomic::{AtomicU64, AtomicUsize};
+// use std::sync::atomic::Ordering::Relaxed;
+// use std::thread::{self, Scope};
+// use std::time::{Duration, Instant};
+// fn main() {
+//     let num_done: &AtomicUsize = &AtomicUsize::new(0);
+//     let total_time: &AtomicU64 = &AtomicU64::new(0);
+//     let max_time: &AtomicU64 = &AtomicU64::new(0);
+//     thread::scope(|s: &Scope<'_, '_>| {
+//         for t in 0..4 {
+//             s.spawn(move || {
+//                 for i in 0..25 {
+//                     let start: Instant = Instant::now();
+//                     println!(" --> long process thread: ({t}), process: {i}");
+//                     thread::sleep(Duration::from_secs(1));
+//                     let time_taken: u64 = start.elapsed().as_micros() as u64;
+//                     num_done.fetch_add(1, Relaxed);
+//                     total_time.fetch_add(time_taken, Relaxed);
+//                     max_time.fetch_max(time_taken, Relaxed);
+//                 }
+//             });
+//         }
+//         loop {
+//             let total_time: Duration = Duration::from_micros(total_time.load(Relaxed));
+//             let max_time: Duration = Duration::from_micros(max_time.load(Relaxed));
+//             let n: usize = num_done.load(Relaxed);
+//             if n == 100 {
+//                 break;
+//             }
+//             if n == 0 {
+//                 println!("Working.. nothing done yet.");
+//             } else {
+//                 println!("Working.. {n}/100 done, {:?} average, {max_time:?} peak", total_time/ n as u32);
+//             }
+//             thread::sleep(Duration::from_secs(1));
+//         }
+//     });
+//     println!("\nDone");
+// }
+
+// use std::sync::{Arc, Mutex};
+// use std::thread;
+// use std::time::{Duration, Instant};
+// fn main() {
+//     let num_done: Arc<Mutex<i32>> = Arc::new(Mutex::new(0));
+//     let total_time: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
+//     let max_time: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
+//     let mut handles: Vec<thread::JoinHandle<()>> = vec![];
+//     for t in 0..4 {
+//         let num_done: Arc<Mutex<i32>> = Arc::clone(&num_done);
+//         let total_time: Arc<Mutex<u64>> = Arc::clone(&total_time);
+//         let max_time: Arc<Mutex<u64>> = Arc::clone(&max_time);
+//         handles.push(thread::spawn(move || {
+//             for i in 0..25 {
+//                 let start: Instant = Instant::now();
+//                 println!(" --> long process thread: ({t}), process: {i}");
+//                 thread::sleep(Duration::from_secs(1));
+//                 let time_taken: u64 = start.elapsed().as_micros() as u64;
+//                 let mut num_done: std::sync::MutexGuard<'_, i32> = num_done.lock().unwrap();
+//                 *num_done += 1;
+//                 let mut total_time: std::sync::MutexGuard<'_, u64> = total_time.lock().unwrap();
+//                 *total_time += time_taken;
+//                 let mut max_time: std::sync::MutexGuard<'_, u64> = max_time.lock().unwrap();
+//                 *max_time = (*max_time).max(time_taken);
+//             }
+//         }));
+//     }
+//     for handle in handles {
+//         handle.join().unwrap();
+//     }
+//     let num_done: i32 = *num_done.lock().unwrap();
+//     let total_time: u64 = *total_time.lock().unwrap();
+//     let max_time: u64 = *max_time.lock().unwrap();
+//     let average_time: Duration = if num_done > 0 {
+//         Duration::from_micros(total_time / num_done as u64)
+//     } else {
+//         Duration::from_micros(0)
+//     };
+//     println!(
+//         "{num_done}/100 done, {:?} average, {:?} peak",
+//         average_time,
+//         Duration::from_micros(max_time)
+//     );
+//     println!("\nDone");
+// }
+
+// use std::sync::atomic::AtomicU32;
+// use std::sync::atomic::Ordering::Relaxed;
+// // fn allocate_new_id() -> u32 { // panic
+// //     static NEXT_ID: AtomicU32 = AtomicU32::new(1);
+// //     let id: u32 = NEXT_ID.fetch_add(1, Relaxed);
+// //     assert!(id < 1000, "too many ids");
+// //     id
+// // }
+// fn allocate_new_id() -> u32 { // abort
+//     static NEXT_ID: AtomicU32 = AtomicU32::new(1);
+//     let id: u32 = NEXT_ID.fetch_add(1, Relaxed);
+//     if id > 1000 {
+//         NEXT_ID.fetch_sub(1, Relaxed);
+//         panic!("too many ids");
+//     }
+//     id
+// }
+// fn main () {
+//     for _ in 0..1001 {
+//         println!("{}", allocate_new_id());
+//     }
+// }
+
+// use std::atomic::AtomicU32;
+// use std::atomic::Ordering::Relaxed;
+// fn increment(a: &AtomicU32) {
+//     let mut current: u32 = a.load(Relaxed);
+//     loop {
+//         let new: u32 = current + 1;
+//         match a.compare_exchange(current, new, Relaxed, Relaxed) {
+//             Ok(_) => return,
+//             Err(v) => crrent = v,
+//         }
+//     }
+// }
+
+// use std::sync::atomic::AtomicU32;
+// use std::sync::atomic::Ordering::Relaxed;
+// fn allocate_new_id() -> u32 {
+//     static NEXT_ID: AtomicU32 = AtomicU32::new(0);
+//     let mut id: u32 = NEXT_ID.load(Relaxed);
+//     loop {
+//         assert!(id < 100, "too many ids");
+//         match NEXT_ID.compare_exchange_weak(id, id + 1, Relaxed, Relaxed) {
+//             Ok(_) => return id,
+//             Err(v) => id = v,
+//         }
+//     }
+// }
+// fn main() {
+//     for _ in 0..1001 {
+//         let id: u32 = allocate_new_id();
+//         println!("{id}");
+//     }
+// }
+
+use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering::Relaxed;
 use std::thread::{self, Scope};
-use std::time::Duration;
+fn get_key() -> (u32, bool) {
+    static KEY: AtomicU32 = AtomicU32::new(0); // 未初期化
+    let key: u32 = KEY.load(Relaxed);
+    if key == 0 {
+        let new_key: u32 = 1234_u32;
+        match KEY.compare_exchange(key, new_key, Relaxed, Relaxed) {
+            Ok(_) => (new_key, true), // 初期化に成功したら初期化した値を返す
+            Err(v) => (v, false), // 初期化に失敗（初期化済み）したら、既存の値を返す
+        }
+    } else {
+        (key, false) // 初期化に失敗（初期化済み）したら、既存の値を返す
+    }
+}
 fn main() {
-    let num_done: &AtomicUsize = &AtomicUsize::new(0); // ref for 4thread
     thread::scope(|s: &Scope<'_, '_>| {
-        for _ in 0..4 {
-            s.spawn(move || {
-                let mut current_sum: usize = 0;
-                for _ in 0..25 {
-                    current_sum += 1;
-                    thread::sleep(Duration::from_millis(100));
-                    num_done.fetch_add(1, Relaxed);
-                }
+        for _ in 0..10 {
+            s.spawn(|| {
+                let (key, is_inited): (u32, bool) = get_key();
                 println!(
-                    "thread: {:?}, result: {}",
-                    thread::current().id(),
-                    current_sum
+                    "thread: {:?}, key: {key}, is inited: {}",
+                    thread::current().id(), is_inited,
                 );
             });
         }
-        loop {
-            let n: usize = num_done.load(Relaxed);
-            if n == 100 {
-                break;
-            }
-            println!("Working.. {n}/100 done");
-            thread::sleep(Duration::from_millis(100));
-        }
     });
-    println!("\nDone");
 }
