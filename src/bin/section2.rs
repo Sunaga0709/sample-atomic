@@ -286,7 +286,7 @@ fn get_key() -> (u32, bool) {
         let new_key: u32 = 1234_u32;
         match KEY.compare_exchange(key, new_key, Relaxed, Relaxed) {
             Ok(_) => (new_key, true), // 初期化に成功したら初期化した値を返す
-            Err(v) => (v, false), // 初期化に失敗（初期化済み）したら、既存の値を返す
+            Err(v) => (v, false),     // 初期化に失敗（初期化済み）したら、既存の値を返す
         }
     } else {
         (key, false) // 初期化に失敗（初期化済み）したら、既存の値を返す
@@ -299,7 +299,8 @@ fn main() {
                 let (key, is_inited): (u32, bool) = get_key();
                 println!(
                     "thread: {:?}, key: {key}, is inited: {}",
-                    thread::current().id(), is_inited,
+                    thread::current().id(),
+                    is_inited,
                 );
             });
         }
